@@ -1,0 +1,3 @@
+[submodule "p4app"]
+	path = p4app
+	url = https://github.com/p4lang/p4app
