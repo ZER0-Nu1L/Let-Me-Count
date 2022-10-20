@@ -3,6 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
+const bit<8> TYPE_LMC =  0x17;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -33,6 +34,10 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+header lmc_t {
+    bit<32> num;
+}
+
 struct metadata {
     /* empty */
 }
@@ -40,6 +45,7 @@ struct metadata {
 struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
+    lmc_t        lmc;
 }
 
 /*************************************************************************
@@ -65,9 +71,16 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        transition accept;
+        transition select(hdr.ipv4.protocol) {
+            TYPE_LMC: parse_lmc;
+            default: accept;
+        }
     }
 
+    state parse_lmc {
+        packet.extract(hdr.lmc);
+        transition accept;
+    }
 }
 
 /*************************************************************************
@@ -113,6 +126,9 @@ control MyIngress(inout headers hdr,
     apply {
         if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
+            if(hdr.lmc.isValid()) {
+                hdr.lmc.num = 0x11223344;
+            }
         } else {
             drop();
         }
@@ -161,6 +177,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.lmc);
     }
 }
 

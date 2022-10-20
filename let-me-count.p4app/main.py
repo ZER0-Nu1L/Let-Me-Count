@@ -6,13 +6,13 @@ from mininet.cli import CLI
 if len(sys.argv) > 1:
     if sys.argv[1] == 'compile':
         try:
-            P4Program('basic.p4').compile()
+            P4Program('letmecount.p4').compile()
         except Exception as e:
             print(e)
             sys.exit(1)
         sys.exit(0)
 
-N = 3
+N = 1
 
 def getForwardingPort(s1, s2):
     clockwise = s2 - s1 if s2 > s1 else (N - s1) + s2
@@ -48,7 +48,7 @@ class RingTopo(Topo):
 
 topo = RingTopo(N)
 try:
-    net = P4Mininet(program='basic.p4', topo=topo)
+    net = P4Mininet(program='letmecount.p4', topo=topo)
 except Exception as e:
     print(e)
     sys.exit(1)
@@ -61,8 +61,7 @@ for i in range(1, N+1):
     sw.insertTableEntry(table_name='MyIngress.ipv4_lpm',
                         match_fields={'hdr.ipv4.dstAddr': [hostIP(i), 32]},
                         action_name='MyIngress.ipv4_forward',
-                        action_params={'dstAddr': hostMAC(i),
-                                       'port': 1})
+                        action_params={'dstAddr': hostMAC(i), 'port': 1})
 
     # Otherwise send the packet to another switch
     for j in range(1, N+1):
@@ -70,8 +69,7 @@ for i in range(1, N+1):
         sw.insertTableEntry(table_name='MyIngress.ipv4_lpm',
                             match_fields={'hdr.ipv4.dstAddr': [hostIP(j), 32]},
                             action_name='MyIngress.ipv4_forward',
-                            action_params={'dstAddr': switchMAC(j),
-                                           'port': getForwardingPort(i, j)})
+                            action_params={'dstAddr': switchMAC(j), 'port': getForwardingPort(i, j)})
 
 
 CLI(net)
