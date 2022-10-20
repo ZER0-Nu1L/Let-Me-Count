@@ -34,9 +34,8 @@ def main():
     print("sending on interface %s to %s" % (iface, str(addr)))
     pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff')
     pkt = pkt /IP(dst=addr) / LMC(num=int(sys.argv[2]))
-    pkt.show2()
+    # pkt.show2() // DEBUG: 
     sendp(pkt, iface=iface, verbose=False)
-
 
 if __name__ == '__main__':
     main()

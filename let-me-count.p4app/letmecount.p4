@@ -99,6 +99,10 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+
+    const bit<32> deBruijn32 = 0x077CB531;         // a 32bit De Bruijn sequence
+    const bit<64> deBruijn64 = 0x03f79d71b4ca8b09; // a 64bit De Bruijn sequence
+
     action drop() {
         mark_to_drop(standard_metadata);
     }
@@ -122,15 +126,41 @@ control MyIngress(inout headers hdr,
         size = 1024;
         default_action = drop();
     }
+
+    action set_lmc_num(bit<32> zero_num) {
+        hdr.lmc.num = zero_num;
+    }
+
+    table DeBruijn_32_bit_position {
+        key = {
+            hdr.lmc.num: exact;
+        }
+        actions = {
+            set_lmc_num;
+        }
+        size = 32;
+    }
     
     apply {
         if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
-            if(hdr.lmc.isValid()) {
-                hdr.lmc.num = 0x11223344;
-            }
         } else {
             drop();
+        }
+
+        // trailingZeroBits: 
+        // x & -x leaves only the right-most bit set in the word. Let k be the
+        // index of that bit. Since only a single bit is set, the value is two
+        // to the power of k. Multiplying by a power of two is equivalent to
+        // left shifting, in this case by k bits.  The de Bruijn constant is
+        // such that all six bit, consecutive substrings are distinct.
+        // Therefore, if we have a left shifted version of this constant we can
+        // find by how many bits it was shifted by looking at which six bit
+        // substring ended up at the top of the word.
+        // return  MultiplyDeBruijn32BitPosition[((x & -x) * deBruijn32) >> 27];
+        if(hdr.lmc.isValid()) {
+            hdr.lmc.num = (((-hdr.lmc.num) & hdr.lmc.num) * deBruijn32) >> 27 ;
+            DeBruijn_32_bit_position.apply();
         }
     }
 }
