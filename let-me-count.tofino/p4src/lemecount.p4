@@ -31,13 +31,6 @@ header ethernet_h {
     bit<16>   ether_type;
 }
 
-header vlan_tag_h {
-    bit<3>   pcp;
-    bit<1>   cfi;
-    bit<12>  vid;
-    bit<16>  ether_type;
-}
-
 header ipv4_h {
     bit<4>   version;
     bit<4>   ihl;
@@ -61,7 +54,6 @@ header ipv4_h {
 
 struct my_ingress_headers_t {
     ethernet_h   ethernet;
-    vlan_tag_h   vlan_tag;
     ipv4_h       ipv4;
 }
 
@@ -88,15 +80,6 @@ parser IngressParser(packet_in        pkt,
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
         transition select(hdr.ethernet.ether_type) {
-            ETHERTYPE_TPID:  parse_vlan_tag;
-            ETHERTYPE_IPV4:  parse_ipv4;
-            default: accept;
-        }
-    }
-
-    state parse_vlan_tag {
-        pkt.extract(hdr.vlan_tag);
-        transition select(hdr.vlan_tag.ether_type) {
             ETHERTYPE_IPV4:  parse_ipv4;
             default: accept;
         }
@@ -138,7 +121,7 @@ control Ingress(
         }
         actions = {
             send; drop;
-#ifdef ONE_STAGE // TODO: ???
+#ifdef ONE_STAGE
             @defaultonly NoAction;
 #endif /* ONE_STAGE */
         }
@@ -164,7 +147,7 @@ control Ingress(
     
     apply {
         if (hdr.ipv4.isValid()) {
-            if (!ipv4_host.apply().hit) {   // NOTE: Q 为什么这样写，直接 ipvr_lpm.apply()不行吗？ A 可以，一个是精准匹配，一个是lpm匹配
+            if (!ipv4_host.apply().hit) {
                 ipv4_lpm.apply();
             }
         }
