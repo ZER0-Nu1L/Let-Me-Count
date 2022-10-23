@@ -1,6 +1,6 @@
 from ipaddress import ip_address
 
-p4 = bfrt.simple_l3.pipe
+p4 = bfrt.letmecount.pipe
 
 # This function can clear all the tables and later on other fixed objects
 # once bfrt support is added.
