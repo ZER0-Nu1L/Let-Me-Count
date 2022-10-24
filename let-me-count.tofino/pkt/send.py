@@ -2,6 +2,8 @@
 
 import os
 import sys
+from lmc_header import LMC
+
 
 if os.getuid() !=0:
     print """
@@ -25,6 +27,5 @@ except:
 print "Sending IP packet to", ip_dst
 p = (Ether(dst="00:11:22:33:44:55", src="00:aa:bb:cc:dd:ee")/
      IP(src="10.11.12.13", dst=ip_dst)/
-     UDP(sport=7,dport=7)/
-     "This is a test")
+     LMC(num=int(sys.argv[3])))
 sendp(p, iface=iface) 

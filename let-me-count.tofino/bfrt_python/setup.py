@@ -76,6 +76,11 @@ ipv4_lpm.add_with_drop(
 ipv4_lpm.add_with_send(
     dst_addr=ip_address('0.0.0.0'),     dst_addr_p_length=0,  port=64)
 
+lmc_num_table = p4.Ingress.lmc_num_table
+for i in range(64):
+    index = 1 << i
+    lmc_num_table.add_with_set_lmc_num(zero_index=index, zero_num=i)
+    
 bfrt.complete_operations()
 
 # Final programming
@@ -86,5 +91,5 @@ print ("Table ipv4_host:")
 ipv4_host.dump(table=True)
 print ("Table ipv4_lpm:")
 ipv4_lpm.dump(table=True)
-
-                       
+print ("Table lmc_num_table:")
+lmc_num_table.dump(table=True)

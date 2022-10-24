@@ -7,6 +7,7 @@
 **************************************************************************/
 const bit<16> ETHERTYPE_TPID = 0x8100;
 const bit<16> ETHERTYPE_IPV4 = 0x0800;
+const bit<8> TYPE_LMC =  0x17;
 
 /* Table Sizes */
 const int IPV4_HOST_SIZE = 65536;
@@ -46,6 +47,10 @@ header ipv4_h {
     bit<32>  dst_addr;
 }
 
+header lmc_t {
+    bit<32> num;
+}
+
 /*************************************************************************
  **************  I N G R E S S   P R O C E S S I N G   *******************
  *************************************************************************/
@@ -55,6 +60,7 @@ header ipv4_h {
 struct my_ingress_headers_t {
     ethernet_h   ethernet;
     ipv4_h       ipv4;
+    lmc_t        lmc;
 }
 
     /******  G L O B A L   I N G R E S S   M E T A D A T A  *********/
@@ -87,9 +93,16 @@ parser IngressParser(packet_in        pkt,
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        transition accept;
+        transition select(hdr.ipv4.protocol) {
+            TYPE_LMC: parse_lmc;
+            default: accept;
+        }
     }
 
+    state parse_lmc {
+        pkt.extract(hdr.lmc);
+        transition accept;
+    }
 }
 
     /***************** M A T C H - A C T I O N  *********************/
@@ -104,6 +117,11 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+
+    bit<32> tmp1 = 0x00;
+    bit<32> tmp2 = 0x00;
+    bit<32> zero_index = 0x00;
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS
@@ -144,12 +162,59 @@ control Ingress(
         default_action = send(64);
         size           = IPV4_LPM_SIZE;
     }
-    
+
+    action get_tmp() {
+        tmp1 = hdr.lmc.num;
+        tmp2 = -hdr.lmc.num;
+    }
+
+    table tmp_table {
+        actions = {
+            get_tmp;
+        }
+        default_action = get_tmp();
+        size = 1;
+    }
+
+    action get_index() {
+        zero_index = tmp1 & tmp2;
+    }
+
+    table index_table {
+        actions = {
+            get_index;
+        }
+        default_action = get_index();
+        size = 1;
+    }
+
+    action set_lmc_num(bit<32> zero_num) {
+        hdr.lmc.num = zero_num;
+    }
+
+    table lmc_num_table {
+        key = {
+            zero_index: exact;
+        }
+        actions = {
+            set_lmc_num;
+            mydebug;
+        }
+        default_action = mydebug();
+        size = 32;
+    }
+
     apply {
         if (hdr.ipv4.isValid()) {
             if (!ipv4_host.apply().hit) {
                 ipv4_lpm.apply();
             }
+        }
+
+        if (hdr.lmc.isValid()) {
+            tmp_table.apply();
+            index_table.apply();
+            lmc_num_table.apply();
         }
     }
 }
