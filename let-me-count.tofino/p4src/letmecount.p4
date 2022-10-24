@@ -198,9 +198,7 @@ control Ingress(
         }
         actions = {
             set_lmc_num;
-            mydebug;
         }
-        default_action = mydebug();
         size = 32;
     }
 

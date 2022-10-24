@@ -2,6 +2,9 @@
 #include <core.p4>
 #include <v1model.p4>
 
+/*************************************************************************
+ ************* C O N S T A N T S    A N D   T Y P E S  *******************
+**************************************************************************/
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<8> TYPE_LMC =  0x17;
 
@@ -104,7 +107,7 @@ control MyIngress(inout headers hdr,
     const bit<64> deBruijn64 = 0x03f79d71b4ca8b09; // a 64bit De Bruijn sequence
 
     action drop() {
-        mark_to_drop(standard_metadata);
+        // mark_to_drop(standard_metadata); // TODO:
     }
     
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {

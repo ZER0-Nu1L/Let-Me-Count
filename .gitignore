@@ -3,6 +3,8 @@
 
 ### My Project ###
 pcap_output/
+bf_drivers.log.*
+zlog-cfg-cur
 
 
 ### C ###
@@ -79,7 +81,7 @@ dkms.conf
 # Executables
 
 ### VisualStudioCode ###
-.vscode/*
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
