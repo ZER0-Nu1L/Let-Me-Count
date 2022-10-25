@@ -77,7 +77,7 @@ ipv4_lpm.add_with_send(
     dst_addr=ip_address('0.0.0.0'),     dst_addr_p_length=0,  port=64)
 
 lmc_num_table = p4.Ingress.lmc_num_table
-for i in range(64):
+for i in range(32):
     index = 1 << i
     lmc_num_table.add_with_set_lmc_num(zero_index=index, zero_num=i)
     

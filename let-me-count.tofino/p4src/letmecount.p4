@@ -121,6 +121,7 @@ control Ingress(
     bit<32> tmp1 = 0x00;
     bit<32> tmp2 = 0x00;
     bit<32> zero_index = 0x00;
+    bit<32> z_temp = 0x00;
 
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
@@ -189,7 +190,7 @@ control Ingress(
     }
 
     action set_lmc_num(bit<32> zero_num) {
-        hdr.lmc.num = zero_num;
+        z_temp = zero_num;
     }
 
     table lmc_num_table {
@@ -202,6 +203,29 @@ control Ingress(
         size = 32;
     }
 
+    Register<bit<32>, _>(32) max_zero_num;
+
+    RegisterAction<bit<32>, _, bit<32>>(max_zero_num) get_zero_num = {
+        void apply(inout bit<32> value, out bit<32> read_value) {
+            if (z_temp > value) {
+                value = z_temp;
+            }
+            read_value = value;
+        }
+    };
+
+    action updata_max_zero_num() {
+        z_temp = get_zero_num.execute(0);
+    }
+
+    table max_zero_num_table {
+        actions = {
+            updata_max_zero_num;
+        }
+        default_action = updata_max_zero_num();
+        size = 1;
+    }
+
     apply {
         if (hdr.ipv4.isValid()) {
             if (!ipv4_host.apply().hit) {
@@ -210,9 +234,13 @@ control Ingress(
         }
 
         if (hdr.lmc.isValid()) {
+            // z_temp <- trailingZeroBits(hdr.lmc.num)
             tmp_table.apply();
             index_table.apply();
             lmc_num_table.apply();
+
+            // z_temp = max{z_temp, value_from_before}
+            max_zero_num_table.apply();
         }
     }
 }
