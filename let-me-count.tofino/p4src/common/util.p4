@@ -77,6 +77,7 @@ parser EmptyEgressParser(
         out empty_metadata_t eg_md,
         out egress_intrinsic_metadata_t eg_intr_md) {
     state start {
+        pkt.extract(eg_intr_md);
         transition accept;
     }
 }
@@ -86,7 +87,9 @@ control EmptyEgressDeparser(
         inout empty_header_t hdr,
         in empty_metadata_t eg_md,
         in egress_intrinsic_metadata_for_deparser_t ig_intr_dprs_md) {
-    apply {}
+    apply {
+        pkt.emit(hdr);
+    }
 }
 
 control EmptyEgress(
