@@ -2,7 +2,7 @@
 
 import os
 import sys
-from scapy.all import IP, TCP, UDP, Raw
+from scapy.all import IP, TCP, UDP, Raw, sniff
 from lmc_header import LMC
 
 def handle_pkt(pkt):
@@ -17,20 +17,18 @@ def handle_pkt(pkt):
             
         sys.stdout.flush()
 
-if os.getuid() !=0:
-    print """
-ERROR: This script requires root privileges. 
-       Use 'sudo' to run it.
-"""
-    quit()
+def main():
+    if (os.getuid() !=0) :
+        print ("ERROR: This script requires root privileges.\n Use 'sudo' to run it.")
+        quit()
+    try:
+        iface=sys.argv[1]
+    except:
+        iface="veth2"
 
-from scapy.all import *
-try:
-    iface=sys.argv[1]
-except:
-    iface="veth1"
+    print("Sniffing on ", iface)
+    print("Press Ctrl-C to stop...")
+    sniff(iface=iface, prn = lambda x: handle_pkt(x))
 
-print "Sniffing on ", iface
-print "Press Ctrl-C to stop..."
-sniff(iface=iface, prn = lambda x: handle_pkt(x))
-
+if __name__ == '__main__':
+    main()
