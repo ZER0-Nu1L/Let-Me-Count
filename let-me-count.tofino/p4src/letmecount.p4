@@ -28,6 +28,7 @@ const int IPV4_LPM_SIZE  = 12288;
 /* Users */
 
 header lmc_t {
+    bit<16> control_bit;
     bit<32> num;
 }
 
@@ -104,6 +105,18 @@ control Ingress(
     bit<32> zero_index = 0x00;
     bit<32> z_temp = 0x00;
 
+    action send_back() {
+        ig_tm_md.ucast_egress_port = ig_intr_md.ingress_port;
+    }
+
+    table send_back_table {
+        actions = {
+            send_back;
+        }
+        const default_action = send_back;
+        size = 1;
+    }
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS
@@ -145,9 +158,23 @@ control Ingress(
         size           = IPV4_LPM_SIZE;
     }
 
+    Hash<bit<32>>(HashAlgorithm_t.RANDOM) hashAlg;
+    bit<32> hash_output = 0;
+    action hash_action() {
+        hash_output = hashAlg.get<bit<32>>(hdr.ipv4.src_addr);
+    }
+
+    table hash_table {
+        actions = {
+            hash_action;
+        }
+        default_action = hash_action;
+        size = 1;
+    }
+
     action get_tmp() {
-        tmp1 = hdr.lmc.num;
-        tmp2 = -hdr.lmc.num;
+        tmp1 = hash_output;
+        tmp2 = -hash_output;
     }
 
     table tmp_table {
@@ -208,26 +235,61 @@ control Ingress(
         size = 1;
     }
 
+    RegisterAction<bit<32>, _, bit<32>>(max_zero_num) reset_zero_num = {
+        void apply(inout bit<32> value) {
+            value = 0;
+        }
+    };
+
+    action reset_max_zero_num() {
+        reset_zero_num.execute(0);
+    }
+
+    table max_zero_num_reset_table {
+        actions = {
+            reset_max_zero_num;
+        }
+        default_action = reset_max_zero_num();
+        size = 1;
+    }
+
+    action terminate() {
+        hdr.lmc.num = z_temp;
+        send(1);
+    }
+
+    table term_table {
+        actions = {
+            terminate;
+        }
+        default_action = terminate();
+        size = 1;
+    }
+
     apply {
         if (hdr.ipv4.isValid()) {
-            if (!ipv4_host.apply().hit) {
-                ipv4_lpm.apply();
+            // if (!ipv4_host.apply().hit) {
+            //     ipv4_lpm.apply();
+            // }
+            if (hdr.lmc.isValid()) {
+                if (hdr.lmc.control_bit == 0) {
+                    max_zero_num_reset_table.apply();
+                } else {
+                    // h = Hash(hdr.ipv4.src_addr)
+                    hash_table.apply(); 
+                    // z_temp <- trailingZeroBits(h)
+                    tmp_table.apply();
+                    index_table.apply();
+                    lmc_num_table.apply();
+                    // z_temp = max{z_temp, value_from_before}
+                    max_zero_num_table.apply();
+                }
             }
         }
-
-        if (hdr.lmc.isValid()) {
-            // z_temp <- trailingZeroBits(hdr.lmc.num)
-            tmp_table.apply();
-            index_table.apply();
-            lmc_num_table.apply();
-
-            // z_temp = max{z_temp, value_from_before}
-            max_zero_num_table.apply();
-        }
+        // hdr.lmc.num = z_temp;
+        term_table.apply();
     }
 }
-
-    /*********************  D E P A R S E R  ************************/
 
 control IngressDeparser(packet_out pkt,
     /* User */
@@ -240,22 +302,6 @@ control IngressDeparser(packet_out pkt,
         pkt.emit(hdr);
     }
 }
-
-
-/*************************************************************************
- ****************  E G R E S S   P R O C E S S I N G   *******************
- *************************************************************************/
-
-    /***********************  H E A D E R S  ************************/
-
-struct my_egress_headers_t {
-}
-
-    /********  G L O B A L   E G R E S S   M E T A D A T A  *********/
-
-struct my_egress_metadata_t {
-}
-
 
 /************ F I N A L   P A C K A G E ******************************/
 Pipeline(
