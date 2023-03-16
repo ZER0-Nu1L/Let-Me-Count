@@ -77,3 +77,9 @@ sudo python ./pkt/send.py --control_bit 0
 sudo python ./pkt/send.py --control_bit 1
 sudo python ./pkt/send.py
 ```
+
+You can see demo video below:
+
+- [Let-me-count[dark-version].mp4](https://drive.google.com/file/d/1EfQDGpLYPSOLNCY63UuZH3dMBAla6fAw/view?usp=share_link) 
+
+- [Let-me-count[light_version].mp4](https://drive.google.com/file/d/12jTdf0rTrlbDcpo8arQAVnUOX4ZCpAvS/view?usp=sharing)
