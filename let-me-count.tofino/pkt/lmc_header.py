@@ -7,7 +7,7 @@ class LMC(Packet):
     name = "Let-me-count header"
     fields_desc = [
         ShortField("control_bit", 0),
-        SignedIntField('num', 0)
+        ShortField('num', 0)
     ]
     
 bind_layers(IP, LMC, proto=TYPE_LMC)

@@ -77,11 +77,22 @@ clear_all()
 # ipv4_lpm.add_with_send(
 #     dst_addr=ip_address('0.0.0.0'),     dst_addr_p_length=0,  port=64)
 
-lmc_num_table = p4.Ingress.lmc_num_table
+lmc_num_table_1 = p4.Ingress.lmc_num_table_1
+lmc_num_table_2 = p4.Ingress.lmc_num_table_2
+lmc_num_table_3 = p4.Ingress.lmc_num_table_3
+
 for i in range(32):
     index = 1 << i
-    lmc_num_table.add_with_set_lmc_num(zero_index=index, zero_num=i)
+    lmc_num_table_1.add_with_set_lmc_num_1(zero_index_1=index, zero_num=i)
     
+for i in range(32):
+    index = 1 << i
+    lmc_num_table_2.add_with_set_lmc_num_2(zero_index_2=index, zero_num=i)
+    
+for i in range(32):
+    index = 1 << i
+    lmc_num_table_3.add_with_set_lmc_num_3(zero_index_3=index, zero_num=i)
+
 bfrt.complete_operations()
 
 # Final programming
@@ -93,5 +104,9 @@ print("""
 # ipv4_host.dump(table=True)
 # print ("Table ipv4_lpm:")
 # ipv4_lpm.dump(table=True)
-print ("Table lmc_num_table:")
-lmc_num_table.dump(table=True)
+print ("Table lmc_num_table_1:")
+lmc_num_table_1.dump(table=True)
+print ("Table lmc_num_table_2:")
+lmc_num_table_2.dump(table=True)
+print ("Table lmc_num_table_3:")
+lmc_num_table_3.dump(table=True)

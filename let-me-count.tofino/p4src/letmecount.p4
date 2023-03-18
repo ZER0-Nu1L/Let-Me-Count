@@ -29,7 +29,7 @@ const int IPV4_LPM_SIZE  = 12288;
 
 header lmc_t {
     bit<16> control_bit;
-    bit<32> num;
+    bit<16> num;
 }
 
 /*************************************************************************
@@ -99,11 +99,17 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+    action miss() {
+        ig_dprsr_md.drop_ctl = 0x1;
+    }
 
-    bit<32> tmp1 = 0x00;
-    bit<32> tmp2 = 0x00;
-    bit<32> zero_index = 0x00;
-    bit<32> z_temp = 0x00;
+    table miss_table {
+        actions = {
+            miss;
+        }
+        const default_action = miss;
+        size = 1;
+    }
 
     action send_back() {
         ig_tm_md.ucast_egress_port = ig_intr_md.ingress_port;
@@ -158,136 +164,422 @@ control Ingress(
         size           = IPV4_LPM_SIZE;
     }
 
-    Hash<bit<32>>(HashAlgorithm_t.RANDOM) hashAlg;
-    bit<32> hash_output = 0;
-    action hash_action() {
-        hash_output = hashAlg.get<bit<32>>(hdr.ipv4.src_addr);
+    Hash<bit<32>>(HashAlgorithm_t.RANDOM) hash1;
+    Hash<bit<32>>(HashAlgorithm_t.RANDOM) hash2;
+    Hash<bit<32>>(HashAlgorithm_t.RANDOM) hash3;
+
+    bit<32> h_1 = 0;
+    bit<32> h_2 = 0;
+    bit<32> h_3 = 0;
+
+    bit<32> tmp1_1 = 0x00;
+    bit<32> tmp2_1 = 0x00;
+    bit<32> tmp1_2 = 0x00;
+    bit<32> tmp2_2 = 0x00;
+    bit<32> tmp1_3 = 0x00;
+    bit<32> tmp2_3 = 0x00;
+
+    bit<32> zero_index_1 = 0x00;
+    bit<32> zero_index_2 = 0x00;
+    bit<32> zero_index_3 = 0x00;
+    
+    Register<bit<16>, _>(1, 0) z_1;
+    Register<bit<16>, _>(1, 0) z_2;
+    Register<bit<16>, _>(1, 0) z_3;
+
+    bit<16> z_temp_1 = 0x00;
+    bit<16> z_temp_2 = 0x00;
+    bit<16> z_temp_3 = 0x00;
+    bit<16> dif_13 = 0x00;
+    bit<16> dif_12 = 0x00;
+    bit<16> dif_23 = 0x00;
+
+    
+    /*************** Process 1 ***************/
+    action hash_action_1() {
+        h_1 = hash1.get<bit<32>>(hdr.ipv4.src_addr);
     }
 
-    table hash_table {
+    // hash the ipv4 addr
+    table hash_table_1 {
         actions = {
-            hash_action;
+            hash_action_1;
         }
-        default_action = hash_action;
+        const default_action = hash_action_1;
         size = 1;
     }
 
-    action get_tmp() {
-        tmp1 = hash_output;
-        tmp2 = -hash_output;
+    action get_tmp_1() {
+        tmp1_1 = h_1;
+        tmp2_1 = -h_1;
     }
 
-    table tmp_table {
+    table tmp_table_1 {
         actions = {
-            get_tmp;
+            get_tmp_1;
         }
-        default_action = get_tmp();
+        default_action = get_tmp_1;
         size = 1;
     }
 
-    action get_index() {
-        zero_index = tmp1 & tmp2;
+    action get_index_1() {
+        zero_index_1 = tmp1_1 & tmp2_1;
     }
 
-    table index_table {
+    table index_table_1 {
         actions = {
-            get_index;
+            get_index_1;
         }
-        default_action = get_index();
+        default_action = get_index_1;
         size = 1;
     }
 
-    action set_lmc_num(bit<32> zero_num) {
-        z_temp = zero_num;
+    action set_lmc_num_1(bit<32> zero_num) {
+        z_temp_1 = (bit<16>)zero_num;
     }
 
-    table lmc_num_table {
+    table lmc_num_table_1 {
         key = {
-            zero_index: exact;
+            zero_index_1: exact;
         }
         actions = {
-            set_lmc_num;
+            set_lmc_num_1;
         }
         size = 32;
     }
 
-    Register<bit<32>, _>(32) max_zero_num;
+    action terminate_1() {
+        hdr.lmc.num = z_temp_1;
+        ig_tm_md.ucast_egress_port = 1;
+    }
 
-    RegisterAction<bit<32>, _, bit<32>>(max_zero_num) get_zero_num = {
-        void apply(inout bit<32> value, out bit<32> read_value) {
-            if (z_temp > value) {
-                value = z_temp;
+    table term_table_1 {
+        actions = {
+            terminate_1;
+        }
+        const default_action = terminate_1;
+        size = 1;
+    }
+
+    RegisterAction<bit<16>, _, bit<16>>(z_1) get_zero_num_1 = {
+        void apply(inout bit<16> value, out bit<16> read_value) {
+            if (z_temp_1 > value) {
+                value = z_temp_1;
             }
             read_value = value;
         }
     };
 
-    action updata_max_zero_num() {
-        // hdr.lmc.num = get_zero_num.execute(0); // DEBUG: 
-        z_temp = get_zero_num.execute(0);
+    action updata_max_zero_num_1() {
+        z_temp_1 = get_zero_num_1.execute(0);
     }
 
-    table max_zero_num_table {
+    table max_zero_num_table_1 {
         actions = {
-            updata_max_zero_num;
+            updata_max_zero_num_1;
         }
-        default_action = updata_max_zero_num();
+        default_action = updata_max_zero_num_1;
         size = 1;
     }
 
-    RegisterAction<bit<32>, _, bit<32>>(max_zero_num) reset_zero_num = {
-        void apply(inout bit<32> value) {
+    RegisterAction<bit<16>, _, bit<16>>(z_1) reset_zero_num_1 = {
+        void apply(inout bit<16> value) {
             value = 0;
         }
     };
 
-    action reset_max_zero_num() {
-        reset_zero_num.execute(0);
+    action reset_max_zero_num_1() {
+        reset_zero_num_1.execute(0);
     }
 
-    table max_zero_num_reset_table {
+    table max_zero_num_reset_table_1 {
         actions = {
-            reset_max_zero_num;
+            reset_max_zero_num_1;
         }
-        default_action = reset_max_zero_num();
+        default_action = reset_max_zero_num_1;
         size = 1;
     }
 
-    action terminate() {
-        hdr.lmc.num = z_temp;
-        send(1);
+    /*************** Process 2 ***************/
+    action hash_action_2() {
+        h_2 = hash2.get<bit<32>>(hdr.ipv4.src_addr);
     }
 
-    table term_table {
+    // hash the ipv4 addr
+    table hash_table_2 {
         actions = {
-            terminate;
+            hash_action_2;
         }
-        default_action = terminate();
+        const default_action = hash_action_2;
+        size = 1;
+    }
+
+    action get_tmp_2() {
+        tmp1_2 = h_2;
+        tmp2_2 = -h_2;
+    }
+
+    table tmp_table_2 {
+        actions = {
+            get_tmp_2;
+        }
+        default_action = get_tmp_2;
+        size = 1;
+    }
+
+    action get_index_2() {
+        zero_index_2 = tmp1_2 & tmp2_2;
+    }
+
+    table index_table_2 {
+        actions = {
+            get_index_2;
+        }
+        default_action = get_index_2;
+        size = 1;
+    }
+
+    action set_lmc_num_2(bit<32> zero_num) {
+        z_temp_2 = (bit<16>)zero_num;
+    }
+
+    table lmc_num_table_2 {
+        key = {
+            zero_index_2: exact;
+        }
+        actions = {
+            set_lmc_num_2;
+        }
+        size = 32;
+    }
+
+    action terminate_2() {
+        hdr.lmc.num = z_temp_2;
+        ig_tm_md.ucast_egress_port = 1;
+    }
+
+    table term_table_2 {
+        actions = {
+            terminate_2;
+        }
+        const default_action = terminate_2;
+        size = 1;
+    }
+
+    RegisterAction<bit<16>, _, bit<16>>(z_2) get_zero_num_2 = {
+        void apply(inout bit<16> value, out bit<16> read_value) {
+            if (z_temp_2 > value) {
+                value = z_temp_2;
+            }
+            read_value = value;
+        }
+    };
+
+    action updata_max_zero_num_2() {
+        z_temp_2 = get_zero_num_2.execute(0);
+    }
+
+    table max_zero_num_table_2 {
+        actions = {
+            updata_max_zero_num_2;
+        }
+        default_action = updata_max_zero_num_2;
+        size = 1;
+    }
+
+    RegisterAction<bit<16>, _, bit<16>>(z_2) reset_zero_num_2 = {
+        void apply(inout bit<16> value) {
+            value = 0;
+        }
+    };
+
+    action reset_max_zero_num_2() {
+        reset_zero_num_2.execute(0);
+    }
+
+    table max_zero_num_reset_table_2 {
+        actions = {
+            reset_max_zero_num_2;
+        }
+        default_action = reset_max_zero_num_2;
+        size = 1;
+    }
+
+    /*************** Process 3 ***************/
+    action hash_action_3() {
+        h_3 = hash3.get<bit<32>>(hdr.ipv4.src_addr);
+    }
+
+    // hash the ipv4 addr
+    table hash_table_3 {
+        actions = {
+            hash_action_3;
+        }
+        const default_action = hash_action_3;
+        size = 1;
+    }
+
+    action get_tmp_3() {
+        tmp1_3 = h_3;
+        tmp2_3 = -h_3;
+    }
+
+    table tmp_table_3 {
+        actions = {
+            get_tmp_3;
+        }
+        default_action = get_tmp_3;
+        size = 1;
+    }
+
+    action get_index_3() {
+        zero_index_3 = tmp1_3 & tmp2_3;
+    }
+
+    table index_table_3 {
+        actions = {
+            get_index_3;
+        }
+        default_action = get_index_3;
+        size = 1;
+    }
+
+    action set_lmc_num_3(bit<32> zero_num) {
+        z_temp_3 = (bit<16>)zero_num;
+    }
+
+    table lmc_num_table_3 {
+        key = {
+            zero_index_3: exact;
+        }
+        actions = {
+            set_lmc_num_3;
+        }
+        size = 32;
+    }
+
+    action terminate_3() {
+        hdr.lmc.num = z_temp_3;
+        ig_tm_md.ucast_egress_port = 1;
+    }
+
+    table term_table_3 {
+        actions = {
+            terminate_3;
+        }
+        const default_action = terminate_3;
+        size = 1;
+    }
+
+    RegisterAction<bit<16>, _, bit<16>>(z_3) get_zero_num_3 = {
+        void apply(inout bit<16> value, out bit<16> read_value) {
+            if (z_temp_3 > value) {
+                value = z_temp_3;
+            }
+            read_value = value;
+        }
+    };
+
+    action updata_max_zero_num_3() {
+        z_temp_3 = get_zero_num_3.execute(0);
+    }
+
+    table max_zero_num_table_3 {
+        actions = {
+            updata_max_zero_num_3;
+        }
+        default_action = updata_max_zero_num_3;
+        size = 1;
+    }
+
+    RegisterAction<bit<16>, _, bit<16>>(z_3) reset_zero_num_3 = {
+        void apply(inout bit<16> value) {
+            value = 0;
+        }
+    };
+
+    action reset_max_zero_num_3() {
+        reset_zero_num_3.execute(0);
+    }
+
+    table max_zero_num_reset_table_3  {
+        actions = {
+            reset_max_zero_num_3;
+        }
+        default_action = reset_max_zero_num_3;
+        size = 1;
+    }
+
+    action calculate_diff() {
+        dif_13 = z_temp_1 - z_temp_3;
+        dif_12 = z_temp_1 - z_temp_2;
+        dif_23 = z_temp_2 - z_temp_3;
+    }
+
+    table diff_table {
+        actions = {
+            calculate_diff;
+        }
+        default_action = calculate_diff;
         size = 1;
     }
 
     apply {
         if (hdr.ipv4.isValid()) {
+            // drop all non-control packets
+            // if (!hdr.lmc.isValid()) {
+            //     miss_table.apply();
+            // }
             // if (!ipv4_host.apply().hit) {
             //     ipv4_lpm.apply();
             // }
-            if (hdr.lmc.isValid()) {
-                if (hdr.lmc.control_bit == 0) {
-                    max_zero_num_reset_table.apply();
-                } else {
-                    // h = Hash(hdr.ipv4.src_addr)
-                    hash_table.apply(); 
-                    // z_temp <- trailingZeroBits(h)
-                    tmp_table.apply();
-                    index_table.apply();
-                    lmc_num_table.apply();
-                    // z_temp = max{z_temp, value_from_before}
-                    max_zero_num_table.apply();
-                }
+            if (hdr.lmc.isValid() && hdr.lmc.control_bit == 0) {
+                max_zero_num_reset_table_1.apply();
+                max_zero_num_reset_table_2.apply();
+                max_zero_num_reset_table_3.apply();
+            } else {
+                // h = Hash(hdr.ipv4.src_addr)
+                hash_table_1.apply();
+                // z_temp <- trailingZeroBits(h)
+                tmp_table_1.apply();
+                index_table_1.apply();
+                lmc_num_table_1.apply();
+                // z_temp = max{z_temp, value_from_before}
+                max_zero_num_table_1.apply();
+
+                hash_table_2.apply();
+                tmp_table_2.apply();
+                index_table_2.apply();
+                lmc_num_table_2.apply();
+                max_zero_num_table_2.apply();
+                
+                hash_table_3.apply();
+                tmp_table_3.apply();
+                index_table_3.apply();
+                lmc_num_table_3.apply();
+                max_zero_num_table_3.apply();
             }
         }
-        // hdr.lmc.num = z_temp;
-        term_table.apply();
+        if (hdr.lmc.isValid() && hdr.lmc.control_bit == 1) {
+                diff_table.apply();
+                if (dif_12 > 0)
+                    if (dif_23 > 0)
+                        term_table_2.apply();
+                    else
+                        if (dif_13 > 0)
+                            term_table_3.apply();
+                        else
+                            term_table_1.apply();
+                else
+                    if (dif_23 < 0)
+                        term_table_2.apply();
+                    else if (dif_13 < 0)
+                        term_table_3.apply();
+                    else
+                        term_table_1.apply();
+        }
+        // No need for egress processing, skip it and use empty controls for egress.
+        ig_tm_md.bypass_egress = 1w1;
     }
 }
 
