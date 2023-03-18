@@ -2,3 +2,6 @@
 	path = p4app
 	url = https://github.com/p4lang/p4app
 	branch = rc-2.0.0
+[submodule "let-me-count.p4app/csrc/uint128_t"]
+	path = let-me-count.p4app/csrc/uint128_t
+	url = https://github.com/calccrypto/uint128_t.git
