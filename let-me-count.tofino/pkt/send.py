@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 import os
 import sys
 import random
@@ -20,12 +19,6 @@ def get_if():
     return iface
 
 def main():
-    # FIXME: 
-    # try:
-    #     iface = sys.argv[2]
-    # except:
-    #     iface="veth0"
-    
     if (os.getuid() !=0) :
         print ("ERROR: This script requires root privileges.\n Use 'sudo' to run it.")
         quit()

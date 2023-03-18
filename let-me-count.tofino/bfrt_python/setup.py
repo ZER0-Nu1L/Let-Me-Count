@@ -60,8 +60,9 @@ def clear_all(verbose=True, batching=True):
         if table['type'] in ['ACTION_PROFILE']:
             _clear(table, verbose=verbose, batching=batching)
     
-#clear_all()
+clear_all()
 
+# NOTE: Removing IPv4 forwarding for better debugging
 # ipv4_host = p4.Ingress.ipv4_host
 # ipv4_host.add_with_send(dst_addr=ip_address('192.168.1.1'),   port=1)
 # ipv4_host.add_with_send(dst_addr=ip_address('192.168.1.2'),   port=2)
@@ -87,6 +88,7 @@ bfrt.complete_operations()
 print("""
 ******************* PROGAMMING RESULTS *****************
 """)
+# NOTE: Removing IPv4 forwarding for better debugging
 # print ("Table ipv4_host:")
 # ipv4_host.dump(table=True)
 # print ("Table ipv4_lpm:")
