@@ -1,6 +1,8 @@
 # Let-Me-Count
 Collaborate with [Yifan Lin](https://github.com/lin-yifan1).
 
+> Median trick is implemented on the 'median-trick' branch. (Only Tofino version).
+
 ```Bash
 git clone https://github.com/ZER0-Nu1L/Let-Me-Count.git
 cd Let-Me-Count
