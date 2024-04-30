@@ -84,7 +84,15 @@ sudo tcpreplay -i veth1 -M 0.1 ./pkt/mypcap/test.pcap
 sudo python ./pkt/send.py --control_bit 1
 ```
 
-You can see demo video below:
+You can see demo below:
+
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./img/Let-me-count_dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="./img/Let-me-count_light.gif">
+  <img alt="演示视频" src="./img/Let-me-count_dark.gif" width="840"/>
+</picture>
+</p>
 
 - [Let-me-count[dark-version].mp4](https://drive.google.com/file/d/1EfQDGpLYPSOLNCY63UuZH3dMBAla6fAw/view?usp=share_link) 
 
